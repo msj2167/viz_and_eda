@@ -201,3 +201,40 @@ ggp_seasonal =
     ## (`geom_point()`).
 
 ![](02_Viz_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+## Data manipulation
+
+Start with factors.
+
+boxplots!
+
+``` r
+weather_df |>
+  mutate(name =fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |>
+  ggplot(aes(x = name, y =tmax)) +
+  geom_boxplot()
+```
+
+    ## Warning: Removed 17 rows containing non-finite outside the scale range
+    ## (`stat_boxplot()`).
+
+![](02_Viz_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+weather_df |>
+  mutate(name = fct_reorder(name, tmax)) |>
+  ggplot(aes(x = name, y =tmax)) +
+  geom_boxplot()
+```
+
+    ## Warning: There was 1 warning in `mutate()`.
+    ## ℹ In argument: `name = fct_reorder(name, tmax)`.
+    ## Caused by warning:
+    ## ! `fct_reorder()` removing 17 missing values.
+    ## ℹ Use `.na_rm = TRUE` to silence this message.
+    ## ℹ Use `.na_rm = FALSE` to preserve NAs.
+
+    ## Warning: Removed 17 rows containing non-finite outside the scale range
+    ## (`stat_boxplot()`).
+
+![](02_Viz_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
