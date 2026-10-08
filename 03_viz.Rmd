@@ -10,6 +10,8 @@ output: github_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(p8105.datasets)
+library(readxl)
+library(haven)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -121,6 +123,7 @@ weather_df |>
 
 ```
 
+when you want to send to someone else 
 ```{r}
 weather_df |>
   group_by(name, month) |>
@@ -133,4 +136,121 @@ weather_df |>
   ) |>
   knitr::kable(digits = 2)
 ```
+
+what about looking at this- great for ggplot
+
+```{r}
+weather_df |>
+  group_by(name, month) |>
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE)
+  ) |>
+  ggplot(aes(x = month, y = mean_tmax, color = name)) +
+  geom_point() +
+  geom_line()
+
+```
+
+```{r}
+weather_df |>
+  mutate(center_tmax = tmax - mean(tmax, na.rm = TRUE)) |> # computer average tmax and subtracts it from the tmax variable
+  ggplot(aes(x = date, y = center_tmax, color = name)) + 
+  geom_point()
+```
+
+What about "window" functions...
+Ranking minimum values 
+
+```{r}
+weather_df |>
+  group_by(name, month) |>
+  mutate(temp_rank = min_rank(tmax)) |>  
+  filter(temp_rank < 2) 
+
+weather_df |>
+  group_by(name, month) |>
+  mutate(temp_rank = min_rank(desc(tmax))) |>  
+  filter(temp_rank < 2) 
+
+# min_rank() gives every tie the same (smallest) value so that c(10, 20, 20, 30) gets ranks c(1, 2, 2, 4). It's the way that ranks are usually computed in sports and is equivalent to rank(ties.method = "min").
+```
+
+lead and lag 
+
+```{r}
+weather_df |>
+  group_by(name) |>
+  mutate(
+    lagged_tmax = lag(tmax) # this creates a variable that shows yesterdays tmax, in this case order matters. The lag function does not know the data it just looks at the previous datepoints so need to put in order. 
+  ) 
+
+# because we are grouping, when the new group starts it puts NA for the first value instead of taking it from the previous group 
+```
+
+```{r}
+weather_df |>
+  group_by(name) |>
+  mutate(
+    lagged_tmax = lag(tmax), 
+    temp_change = tmax - lagged_tmax # this created a new variable with the change in temp each day from the previous day 
+  ) |>
+  summarize(
+    mean_temp_change = mean(temp_change, na.rm = TRUE), 
+    sd_temp_change = sd(temp_change, na.rm = TRUE)
+  )
+```
+
+## Revisit some examples 
+import, clean, tidy, etc the pulse data, and compute mean and median 
+BDI score at each visit
+
+```{r}
+pulse_df=
+  read_sas("data_file/public_pulse_data.sas7bdat") |>
+  janitor::clean_names() |>
+  pivot_longer(
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", # where should you send the column names
+    names_prefix = "bdi_score_",
+    values_to = "bdi_score" # where should you send the values, to a column
+  ) |> 
+  select(id, visit, everything()) |>
+  mutate(
+    visit = replace(visit, visit == "bl", "00m")
+  )
+
+pulse_df |>
+group_by(visit) |>
+  summarize(
+    mean_bdi_score = mean(bdi_score, na.rm = TRUE), 
+    median_bdi_score = median(bdi_score, na.rm = TRUE)
+  ) |>
+knitr::kable(digit = 2)
+```
+
+in the FAS data, compute mean outcome (ears only) across dose and day of treatment; show in a reader-friendly table 
+
+```{r}
+pup_data = 
+  read_csv("./data_file/FAS_pups.csv", na = c("NA", "."), skip = 3) |>
+  janitor::clean_names() |>
+  mutate(sex = recode(sex, `1` = "male", `2` = "female")) 
+
+litter_data = 
+  read_csv("./data_file/FAS_litters.csv") |>
+  janitor::clean_names() |>
+  separate(group, into = c("dose", "day_of_tx"), sep = 3)
+
+fas_data = left_join(pup_data, litter_data, by = "litter_number") 
+
+fas_data |> 
+  group_by(dose, day_of_tx) |> 
+  drop_na(dose) |> 
+  summarize(mean_pivot = mean(pd_pivot, na.rm = TRUE)) |> 
+  pivot_wider(
+    names_from = dose, 
+    values_from = mean_pivot) |> 
+  knitr::kable(digits = 3)
+```
+
 
